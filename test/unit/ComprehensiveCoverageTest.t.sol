@@ -119,10 +119,21 @@ contract ComprehensiveCoverageTest is BaseTest {
         vm.expectRevert();
         lendingEngine.addAsset(address(usdc), address(saUSDC)); // Already exists
         
-        // Test deactivating asset that doesn't exist
-        vm.prank(owner);
+        // Test getTotalAssets with unsupported asset - NEW TEST
         vm.expectRevert();
-        lendingEngine.deactivateAsset(address(this)); // Random address
+        lendingEngine.getTotalAssets(address(this)); // Random address
+        
+        // Test getSharePrice with unsupported asset - NEW TEST
+        vm.expectRevert();
+        lendingEngine.getSharePrice(address(this)); // Random address
+        
+        // Test getAssetInfo with unsupported asset - NEW TEST
+        vm.expectRevert();
+        lendingEngine.getAssetInfo(address(this)); // Random address
+        
+        // Test getSharePrice with empty pool - NEW TEST
+        vm.expectRevert();
+        lendingEngine.getSharePrice(address(usdc)); // Empty pool
     }
 
     /// @dev Test protocol state and logging functions - UNCOVERED FUNCTIONS
@@ -225,6 +236,14 @@ contract ComprehensiveCoverageTest is BaseTest {
         assertEq(info.underlying, address(usdc));
         assertEq(address(info.token), address(saUSDC));
         assertTrue(info.isActive);
+        
+        // First deposit some assets to make getSharePrice work
+        uint256 depositAmount = 1000e6;
+        usdc.mint(user1, depositAmount);
+        vm.startPrank(user1);
+        usdc.approve(address(lendingEngine), depositAmount);
+        lendingEngine.deposit(address(usdc), depositAmount);
+        vm.stopPrank();
         
         // Test getSharePrice - UNCOVERED FUNCTION
         uint256 sharePrice = lendingEngine.getSharePrice(address(usdc));

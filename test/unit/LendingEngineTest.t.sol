@@ -183,12 +183,11 @@ contract LendingEngineTest is BaseTest {
         uint256 depositAmount = 1000e6; // 1000 USDC
         uint256 interestAmount = 100e6; // 100 USDC (10% yield)
         
-        // Initial share price should be 1.0
-        assertEq(lendingEngine.getSharePrice(address(usdc)), PRECISION, "Initial share price should be 1.0");
-        
-        // Deposit
+        // Deposit first to create shares
         _deposit(user1, address(usdc), depositAmount);
-        assertEq(lendingEngine.getSharePrice(address(usdc)), PRECISION, "Share price should remain 1.0 after deposit");
+        
+        // Initial share price should be 1.0 after deposit
+        assertEq(lendingEngine.getSharePrice(address(usdc)), PRECISION, "Initial share price should be 1.0");
         
         // Add interest
         usdc.mint(owner, interestAmount);

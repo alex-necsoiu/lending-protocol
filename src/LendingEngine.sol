@@ -225,8 +225,6 @@ contract LendingEngine is ILendingEngine, ReentrancyGuard, Pausable, Ownable2Ste
      * @notice Unpause all operations
      */
     function emergencyUnpause() external onlyOwner {
-        _unpause();
-        
         // Cache array length to save gas
         uint256 assetsLength = s_assetsList.length;
         
@@ -240,6 +238,8 @@ contract LendingEngine is ILendingEngine, ReentrancyGuard, Pausable, Ownable2Ste
                 ++i;
             }
         }
+
+        _unpause();
         
         emit EmergencyUnpause();
     }
@@ -251,7 +251,7 @@ contract LendingEngine is ILendingEngine, ReentrancyGuard, Pausable, Ownable2Ste
      * @param underlying Address of the underlying asset
      * @return info Asset information struct
      */
-    function getAssetInfo(address underlying) public view returns (AssetInfo memory info) {
+    function getAssetInfo(address underlying) public view supportedAsset(underlying) returns (AssetInfo memory info) {
         return s_supportedAssets[underlying];
     }
 
@@ -277,8 +277,7 @@ contract LendingEngine is ILendingEngine, ReentrancyGuard, Pausable, Ownable2Ste
      * @param underlying Address of the underlying asset
      * @return totalAssets Total assets managed by the protocol token
      */
-    function getTotalAssets(address underlying) external view returns (uint256 totalAssets) {
-        if (!s_supportedAssets[underlying].isActive) return 0;
+    function getTotalAssets(address underlying) external view supportedAsset(underlying) returns (uint256 totalAssets) {
         return s_supportedAssets[underlying].token.totalAssets();
     }
 
@@ -286,12 +285,12 @@ contract LendingEngine is ILendingEngine, ReentrancyGuard, Pausable, Ownable2Ste
      * @notice Get the current share price for an asset (assets per share)
      * @param underlying Address of the underlying asset
      * @return sharePrice Current share price with 18 decimal precision
+     * @dev Reverts if no shares exist (pool is empty)
      */
-    function getSharePrice(address underlying) external view returns (uint256 sharePrice) {
-        if (!s_supportedAssets[underlying].isActive) return 0;
+    function getSharePrice(address underlying) external view supportedAsset(underlying) returns (uint256 sharePrice) {
         IStakeAaveToken token = s_supportedAssets[underlying].token;
         uint256 totalShares = token.totalSupply();
-        if (totalShares == 0) return PRECISION; // 1:1 ratio initially
+        if (totalShares == 0) revert LendingEngine__InsufficientBalance();
         return (token.totalAssets() * PRECISION) / totalShares;
     }
 }
