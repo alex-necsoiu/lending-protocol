@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.30;
+pragma solidity 0.8.30;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
+import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
 import { IStakeAaveToken } from "../interfaces/IStakeAaveToken.sol";
 
 /**
@@ -21,7 +23,7 @@ import { IStakeAaveToken } from "../interfaces/IStakeAaveToken.sol";
  * - Modifiers for access control and validation
  * - Proper contract section ordering per style guide
  */
-abstract contract StakeAaveToken is IStakeAaveToken, ERC20, ReentrancyGuard, Ownable {
+abstract contract StakeAaveToken is IStakeAaveToken, ERC20, ReentrancyGuard, Pausable, Ownable2Step {
     using SafeERC20 for IERC20;
 
     // --- Constants ---
@@ -92,6 +94,7 @@ abstract contract StakeAaveToken is IStakeAaveToken, ERC20, ReentrancyGuard, Own
     function deposit(uint256 assets, address receiver) 
         external 
         nonReentrant 
+        whenNotPaused
         moreThanZero(assets) 
         returns (uint256 shares) 
     {
@@ -119,6 +122,7 @@ abstract contract StakeAaveToken is IStakeAaveToken, ERC20, ReentrancyGuard, Own
     function redeem(uint256 shares, address receiver, address owner) 
         external 
         nonReentrant 
+        whenNotPaused
         moreThanZero(shares) 
         returns (uint256 assets) 
     {
@@ -193,6 +197,20 @@ abstract contract StakeAaveToken is IStakeAaveToken, ERC20, ReentrancyGuard, Own
             return assets; // 1:1 ratio for first deposit
         }
         return (assets * supply) / s_totalAssets;
+    }
+
+    /**
+     * @notice Pause the token (only lending engine)
+     */
+    function pause() external onlyLendingEngine {
+        _pause();
+    }
+
+    /**
+     * @notice Unpause the token (only lending engine)
+     */
+    function unpause() external onlyLendingEngine {
+        _unpause();
     }
 
     /**

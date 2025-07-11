@@ -83,10 +83,10 @@ contract DeployLending is Script {
         contracts.lendingEngine = new LendingEngine(msg.sender);
         console.log("Deployed LendingEngine:", address(contracts.lendingEngine));
 
-        // Deploy protocol tokens
-        contracts.saUSDC = new StakeAaveUSDC(contracts.usdc, address(contracts.lendingEngine));
-        contracts.saETH = new StakeAaveETH(contracts.weth, address(contracts.lendingEngine));
-        contracts.saMATIC = new StakeAaveMATIC(contracts.matic, address(contracts.lendingEngine));
+        // Deploy protocol tokens with deployer as initial owner
+        contracts.saUSDC = new StakeAaveUSDC(contracts.usdc, msg.sender);
+        contracts.saETH = new StakeAaveETH(contracts.weth, msg.sender);
+        contracts.saMATIC = new StakeAaveMATIC(contracts.matic, msg.sender);
 
         console.log("Deployed saUSDC:", address(contracts.saUSDC));
         console.log("Deployed saETH:", address(contracts.saETH));
@@ -107,6 +107,11 @@ contract DeployLending is Script {
         contracts.lendingEngine.addAsset(contracts.usdc, address(contracts.saUSDC));
         contracts.lendingEngine.addAsset(contracts.weth, address(contracts.saETH));
         contracts.lendingEngine.addAsset(contracts.matic, address(contracts.saMATIC));
+
+        // Transfer ownership of tokens to lending engine for production
+        contracts.saUSDC.transferOwnership(address(contracts.lendingEngine));
+        contracts.saETH.transferOwnership(address(contracts.lendingEngine));
+        contracts.saMATIC.transferOwnership(address(contracts.lendingEngine));
 
         console.log("Protocol setup completed");
     }

@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.30;
+pragma solidity 0.8.30;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
+import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
 import { ILendingEngine } from "./interfaces/ILendingEngine.sol";
 import { IStakeAaveToken } from "./interfaces/IStakeAaveToken.sol";
 
@@ -21,11 +23,12 @@ import { IStakeAaveToken } from "./interfaces/IStakeAaveToken.sol";
  * - Proper access control and validation modifiers
  * - CEI (Checks-Effects-Interactions) pattern for security
  */
-contract LendingEngine is ILendingEngine, ReentrancyGuard, Ownable {
+contract LendingEngine is ILendingEngine, ReentrancyGuard, Pausable, Ownable2Step {
     using SafeERC20 for IERC20;
 
     // --- Constants ---
     uint256 private constant PRECISION = 1e18;
+    uint256 private constant MAX_ASSETS = 50; // Prevent unbounded array
 
     // --- State Variables ---
     mapping(address => AssetInfo) private s_supportedAssets;
@@ -33,6 +36,8 @@ contract LendingEngine is ILendingEngine, ReentrancyGuard, Ownable {
 
     // --- Events (additional to interface) ---
     event AssetDeactivated(address indexed underlying);
+    event EmergencyPause();
+    event EmergencyUnpause();
 
     // --- Errors ---
     error LendingEngine__NeedsMoreThanZero();
@@ -42,6 +47,7 @@ contract LendingEngine is ILendingEngine, ReentrancyGuard, Ownable {
     error LendingEngine__DepositFailed();
     error LendingEngine__RedeemFailed();
     error LendingEngine__InsufficientBalance();
+    error LendingEngine__TooManyAssets();
 
     // --- Modifiers ---
     modifier moreThanZero(uint256 amount) {
@@ -77,6 +83,9 @@ contract LendingEngine is ILendingEngine, ReentrancyGuard, Ownable {
         if (s_supportedAssets[underlying].isActive) {
             revert LendingEngine__AssetAlreadyExists(underlying);
         }
+        if (s_assetsList.length >= MAX_ASSETS) {
+            revert LendingEngine__TooManyAssets();
+        }
 
         // Verify the protocol token is properly configured
         IStakeAaveToken token = IStakeAaveToken(protocolToken);
@@ -111,6 +120,7 @@ contract LendingEngine is ILendingEngine, ReentrancyGuard, Ownable {
     function deposit(address underlying, uint256 amount) 
         external 
         nonReentrant 
+        whenNotPaused
         supportedAsset(underlying) 
         moreThanZero(amount) 
         returns (uint256 sharesReceived) 
@@ -144,6 +154,7 @@ contract LendingEngine is ILendingEngine, ReentrancyGuard, Ownable {
     function redeem(address underlying, uint256 shares) 
         external 
         nonReentrant 
+        whenNotPaused
         supportedAsset(underlying) 
         moreThanZero(shares) 
         returns (uint256 assetsReceived) 
@@ -185,6 +196,52 @@ contract LendingEngine is ILendingEngine, ReentrancyGuard, Ownable {
         assetInfo.token.accrueInterest(interestAmount);
 
         emit InterestAccrued(underlying, interestAmount);
+    }
+
+    /**
+     * @notice Emergency pause all operations
+     */
+    function emergencyPause() external onlyOwner {
+        _pause();
+        
+        // Cache array length to save gas
+        uint256 assetsLength = s_assetsList.length;
+        
+        // Pause all protocol tokens
+        for (uint256 i = 0; i < assetsLength; ) {
+            address underlying = s_assetsList[i];
+            if (s_supportedAssets[underlying].isActive) {
+                s_supportedAssets[underlying].token.pause();
+            }
+            unchecked {
+                ++i;
+            }
+        }
+        
+        emit EmergencyPause();
+    }
+
+    /**
+     * @notice Unpause all operations
+     */
+    function emergencyUnpause() external onlyOwner {
+        _unpause();
+        
+        // Cache array length to save gas
+        uint256 assetsLength = s_assetsList.length;
+        
+        // Unpause all protocol tokens
+        for (uint256 i = 0; i < assetsLength; ) {
+            address underlying = s_assetsList[i];
+            if (s_supportedAssets[underlying].isActive) {
+                s_supportedAssets[underlying].token.unpause();
+            }
+            unchecked {
+                ++i;
+            }
+        }
+        
+        emit EmergencyUnpause();
     }
 
     // --- Public View Functions ---

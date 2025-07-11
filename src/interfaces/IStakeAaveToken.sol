@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.30;
+pragma solidity 0.8.30;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -84,4 +84,14 @@ interface IStakeAaveToken is IERC20 {
      * @param interestAmount Amount of interest to add
      */
     function accrueInterest(uint256 interestAmount) external;
+
+    /**
+     * @notice Pause the token (only callable by LendingEngine)
+     */
+    function pause() external;
+
+    /**
+     * @notice Unpause the token (only callable by LendingEngine)
+     */
+    function unpause() external;
 }
