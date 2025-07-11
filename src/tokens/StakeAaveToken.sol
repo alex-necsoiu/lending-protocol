@@ -46,12 +46,16 @@ abstract contract StakeAaveToken is IStakeAaveToken, ERC20, ReentrancyGuard, Pau
 
     // --- Modifiers ---
     modifier moreThanZero(uint256 amount) {
-        if (amount == 0) revert StakeAaveToken__NeedsMoreThanZero();
+        if (amount == 0) {
+            revert StakeAaveToken__NeedsMoreThanZero();
+        }
         _;
     }
 
     modifier onlyLendingEngine() {
-        if (msg.sender != s_lendingEngine) revert StakeAaveToken__NotLendingEngine();
+        if (msg.sender != s_lendingEngine) {
+            revert StakeAaveToken__NotLendingEngine();
+        }
         _;
     }
 
@@ -69,7 +73,9 @@ abstract contract StakeAaveToken is IStakeAaveToken, ERC20, ReentrancyGuard, Pau
         string memory symbol,
         address owner
     ) ERC20(name, symbol) Ownable(owner) {
-        if (underlyingAsset == address(0)) revert StakeAaveToken__NeedsMoreThanZero();
+        if (underlyingAsset == address(0)) {
+            revert StakeAaveToken__NeedsMoreThanZero();
+        }
         i_asset = IERC20(underlyingAsset);
     }
 
@@ -80,7 +86,9 @@ abstract contract StakeAaveToken is IStakeAaveToken, ERC20, ReentrancyGuard, Pau
      * @param lendingEngine Address of the lending engine
      */
     function setLendingEngine(address lendingEngine) external onlyOwner {
-        if (lendingEngine == address(0)) revert StakeAaveToken__NeedsMoreThanZero();
+        if (lendingEngine == address(0)) {
+            revert StakeAaveToken__NeedsMoreThanZero();
+        }
         s_lendingEngine = lendingEngine;
         emit LendingEngineSet(lendingEngine);
     }
@@ -100,7 +108,9 @@ abstract contract StakeAaveToken is IStakeAaveToken, ERC20, ReentrancyGuard, Pau
     {
         // Calculate shares to mint (before updating total assets)
         shares = convertToShares(assets);
-        if (shares == 0) revert StakeAaveToken__InsufficientShares();
+        if (shares == 0) {
+            revert StakeAaveToken__InsufficientShares();
+        }
 
         // Effects: Update state
         s_totalAssets += assets;
@@ -129,16 +139,22 @@ abstract contract StakeAaveToken is IStakeAaveToken, ERC20, ReentrancyGuard, Pau
         // Handle allowance if not self-redeeming
         if (owner != msg.sender) {
             uint256 currentAllowance = allowance(owner, msg.sender);
-            if (currentAllowance < shares) revert StakeAaveToken__InsufficientShares();
+            if (currentAllowance < shares) {
+                revert StakeAaveToken__InsufficientShares();
+            }
             _approve(owner, msg.sender, currentAllowance - shares);
         }
 
         // Calculate assets to withdraw
         assets = convertToAssets(shares);
-        if (assets == 0) revert StakeAaveToken__InsufficientAssets();
+        if (assets == 0) {
+            revert StakeAaveToken__InsufficientAssets();
+        }
 
         // Check if we have enough assets
-        if (assets > s_totalAssets) revert StakeAaveToken__InsufficientAssets();
+        if (assets > s_totalAssets) {
+            revert StakeAaveToken__InsufficientAssets();
+        }
 
         // Effects: Update state
         s_totalAssets -= assets;

@@ -51,12 +51,16 @@ contract LendingEngine is ILendingEngine, ReentrancyGuard, Pausable, Ownable2Ste
 
     // --- Modifiers ---
     modifier moreThanZero(uint256 amount) {
-        if (amount == 0) revert LendingEngine__NeedsMoreThanZero();
+        if (amount == 0) {
+            revert LendingEngine__NeedsMoreThanZero();
+        }
         _;
     }
 
     modifier supportedAsset(address underlying) {
-        if (!s_supportedAssets[underlying].isActive) revert LendingEngine__AssetNotSupported(underlying);
+        if (!s_supportedAssets[underlying].isActive) {
+            revert LendingEngine__AssetNotSupported(underlying);
+        }
         _;
     }
 
@@ -89,7 +93,9 @@ contract LendingEngine is ILendingEngine, ReentrancyGuard, Pausable, Ownable2Ste
 
         // Verify the protocol token is properly configured
         IStakeAaveToken token = IStakeAaveToken(protocolToken);
-        if (token.asset() != underlying) revert LendingEngine__InvalidTokenAddress();
+        if (token.asset() != underlying) {
+            revert LendingEngine__InvalidTokenAddress();
+        }
 
         // Add asset to mapping and list
         s_supportedAssets[underlying] = AssetInfo({
@@ -290,7 +296,9 @@ contract LendingEngine is ILendingEngine, ReentrancyGuard, Pausable, Ownable2Ste
     function getSharePrice(address underlying) external view supportedAsset(underlying) returns (uint256 sharePrice) {
         IStakeAaveToken token = s_supportedAssets[underlying].token;
         uint256 totalShares = token.totalSupply();
-        if (totalShares == 0) revert LendingEngine__InsufficientBalance();
+        if (totalShares == 0) {
+            revert LendingEngine__InsufficientBalance();
+        }
         return (token.totalAssets() * PRECISION) / totalShares;
     }
 }
